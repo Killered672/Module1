@@ -32,7 +32,7 @@ curl --location 'http://localhost:8080/api/v1/calculate' \
 Ответ:
 
 {
-  "result": "6.00"
+  "result": "6"
 }
 
 
@@ -44,7 +44,7 @@ curl --location 'http://localhost:8080/api/v1/calculate' \
 --data '
 
 {
-  "expression": "2+2*a"
+  "expression": "2+a"
 }'
 
 Ответ:
