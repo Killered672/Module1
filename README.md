@@ -7,11 +7,13 @@
 Склонируйте репозиторий(через git bash):
 
 git clone https://github.com/yourusername/calc_service.git
+
 cd calc_service
 
 Запустите сервер:
 
 go run ./cmd/calc_service/main.go
+
 Сервер будет доступен по адресу http://localhost:8080.
 
 Примеры использования
