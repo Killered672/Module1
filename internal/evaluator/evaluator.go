@@ -40,7 +40,6 @@ func isOperator(char rune) bool {
 }
 
 func eval(expr string) (float64, error) {
-	// Простая реализация для примера: поддерживает только сложение и умножение
 	tokens := strings.FieldsFunc(expr, func(r rune) bool {
 		return r == '+' || r == '*'
 	})
