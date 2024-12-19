@@ -1,3 +1,3 @@
-module github.com/Killered672/Module1
+module calc_service
 
 go 1.23.0

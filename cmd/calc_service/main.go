@@ -1,16 +1,17 @@
 package main
 
 import (
-	"calc_service/internal/handlers"
+	"log"
 	"net/http"
+
+	"calc_service/internal/handlers"
 )
 
 func main() {
-	http.HandleFunc("/api/v1/calculate", handlers.CalculateExpression)
+	http.HandleFunc("/api/v1/calculate", handlers.CalculateHandler)
 
-	println("Server is running on http://localhost:8080")
-	err := http.ListenAndServe(":8080", nil)
-	if err != nil {
-		panic(err)
+	log.Println("Starting calculator service on port 8080...")
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		log.Fatalf("Could not start server: %v", err)
 	}
 }
