@@ -1,3 +1,3 @@
-module github.com/Killered672/Module-1
+module github.com/Killered672/Module1
 
 go 1.23.0
