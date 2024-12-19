@@ -6,7 +6,7 @@
 
 Склонируйте репозиторий(через git bash):
 
-git clone https://github.com/yourusername/calc_service.git
+git clone https://github.com/Killered672/Module-1
 
 cd calc_service
 
