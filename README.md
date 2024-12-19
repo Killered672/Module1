@@ -19,8 +19,9 @@ go run ./cmd/calc_service/main.go
 
 Сервер будет доступен по адресу http://localhost:8080.
 
-Примеры использования
-Успешный(не очень корректный ответ) запрос:
+Примеры использования:
+
+Успешный запрос(но не очень корректный ответ):
 
 curl --location 'http://localhost:8080/api/v1/calculate' \
 --header 'Content-Type: application/json' \
