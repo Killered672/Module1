@@ -10,7 +10,7 @@
 
 git clone https://github.com/Killered672/Module1
 
-cd calc_service
+cd Module1
 
 Запустите сервер:
 
@@ -19,7 +19,7 @@ go run ./cmd/calc_service/main.go
 Сервер будет доступен по адресу http://localhost:8080.
 
 Примеры использования
-Успешный запрос:
+Успешный(не очень корректный вывод) запрос:
 
 curl --location 'http://localhost:8080/api/v1/calculate' \
 --header 'Content-Type: application/json' \
@@ -32,7 +32,7 @@ curl --location 'http://localhost:8080/api/v1/calculate' \
 Ответ:
 
 {
-  "result": "6"
+  "result": "8"
 }
 
 
