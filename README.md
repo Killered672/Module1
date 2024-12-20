@@ -23,8 +23,8 @@ go run ./cmd/calc_service/main.go
 
 Успешный запрос:
 
-curl --location 'http://localhost:8080/api/v1/calculate'(пробел)\
---header 'Content-Type: application/json'(пробел)\
+curl --location 'http://localhost:8080/api/v1/calculate' \
+--header 'Content-Type: application/json' \
 --data '
 
 {
