@@ -28,7 +28,9 @@ curl --location 'http://localhost:8080/api/v1/calculate' \
 --data '
 
 {
+
   "expression": "2*2+2"
+
 }'
 
 Ответ:
@@ -46,12 +48,16 @@ curl --location 'http://localhost:8080/api/v1/calculate' \
 --data '
 
 {
+
   "expression": "2+a"
+
 }'
 
 Ответ:
 {
+
   "error": "Expression is not valid"
+
 }
 
 
@@ -63,10 +69,14 @@ curl --location 'http://localhost:8080/api/v1/calculate' \
 --data '
 
 {
+
   "expression": "2/0"
+
 }'
 
 Ответ:
 {
+
   "error": "Internal server error"
+  
 }
