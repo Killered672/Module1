@@ -26,6 +26,7 @@ go run ./cmd/calc_service/main.go
 curl --location 'http://localhost:8080/api/v1/calculate' \\         
 --header 'Content-Type: application/json' \\         
 --data '
+
 {
   "expression": "2*2+2"
 }'
@@ -43,6 +44,7 @@ curl --location 'http://localhost:8080/api/v1/calculate' \\
 curl --location 'http://localhost:8080/api/v1/calculate' \\       
 --header 'Content-Type: application/json' \\       
 --data '
+
 {
   "expression": "2+a"
 }'
@@ -59,6 +61,7 @@ curl --location 'http://localhost:8080/api/v1/calculate' \\
 curl --location 'http://localhost:8080/api/v1/calculate' \\       
 --header 'Content-Type: application/json' \\       
 --data '
+
 {
   "expression": "2/0"
 }'
