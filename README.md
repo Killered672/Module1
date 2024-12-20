@@ -21,7 +21,7 @@ go run ./cmd/calc_service/main.go
 
 Примеры использования:
 
-Успешный запрос(но не очень корректный ответ):
+Успешный запрос:
 
 curl --location 'http://localhost:8080/api/v1/calculate' \
 --header 'Content-Type: application/json' \
