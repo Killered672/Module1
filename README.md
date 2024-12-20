@@ -23,8 +23,8 @@ go run ./cmd/calc_service/main.go
 
 Успешный запрос:
 
-curl --location 'http://localhost:8080/api/v1/calculate' \
---header 'Content-Type: application/json' \
+curl --location 'http://localhost:8080/api/v1/calculate' \\
+--header 'Content-Type: application/json' \\
 --data '
 
 {
@@ -41,8 +41,8 @@ curl --location 'http://localhost:8080/api/v1/calculate' \
 
 Ошибка 422 (невалидное выражение):
 
-curl --location 'http://localhost:8080/api/v1/calculate' \
---header 'Content-Type: application/json' \
+curl --location 'http://localhost:8080/api/v1/calculate' \\
+--header 'Content-Type: application/json' \\
 --data '
 
 {
@@ -58,8 +58,8 @@ curl --location 'http://localhost:8080/api/v1/calculate' \
 
 Ошибка 500 (внутренняя ошибка сервера):
 
-curl --location 'http://localhost:8080/api/v1/calculate' \
---header 'Content-Type: application/json' \
+curl --location 'http://localhost:8080/api/v1/calculate' \\
+--header 'Content-Type: application/json' \\
 --data '
 
 {
