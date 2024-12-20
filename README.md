@@ -28,13 +28,13 @@ curl --location 'http://localhost:8080/api/v1/calculate' \
 --data '
 
 {
-  "expression": "2+2*2"
+  "expression": "2*2+2"
 }'
 
 Ответ:
 
 {
-  "result": "8"
+  "result": "6"
 }
 
 
