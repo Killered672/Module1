@@ -94,7 +94,7 @@ func TestIsValidExpression(t *testing.T) {
 		{
 			name:       "Empty expression",
 			expression: "",
-			expected:   true, // Пустая строка считается валидной
+			expected:   true,
 		},
 		{
 			name:       "Whitespace expression",
