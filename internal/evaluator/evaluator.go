@@ -41,13 +41,14 @@ func isOperator(char rune) bool {
 
 func eval(expr string) (float64, error) {
 	tokens := strings.FieldsFunc(expr, func(r rune) bool {
-		return r == '+' || r == '*'
+		return isOperator(r)
 	})
+
 	operators := strings.FieldsFunc(expr, func(r rune) bool {
 		return isDigit(r) || r == '.'
 	})
 
-	if len(tokens) == 0 || len(operators) == 0 {
+	if len(tokens) == 0 || len(operators) == 0 || len(tokens) != len(operators)+1 {
 		return 0, errors.New("invalid expression")
 	}
 
@@ -65,8 +66,15 @@ func eval(expr string) (float64, error) {
 		switch operator {
 		case "+":
 			result += nextValue
+		case "-":
+			result -= nextValue
 		case "*":
 			result *= nextValue
+		case "/":
+			if nextValue == 0 {
+				return 0, errors.New("division by zero")
+			}
+			result /= nextValue
 		default:
 			return 0, errors.New("unsupported operator")
 		}
