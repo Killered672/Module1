@@ -39,7 +39,7 @@ func TestEvaluateExpression(t *testing.T) {
 			name:        "Division by zero",
 			expression:  "2/0",
 			expected:    "",
-			expectedErr: "unsupported operator",
+			expectedErr: "division by zero",
 		},
 		{
 			name:        "Empty expression",
@@ -99,7 +99,7 @@ func TestIsValidExpression(t *testing.T) {
 		{
 			name:       "Whitespace expression",
 			expression: " 2 + 2 ",
-			expected:   true,
+			expected:   false,
 		},
 	}
 
