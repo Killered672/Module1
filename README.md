@@ -72,3 +72,14 @@ curl --location 'http://localhost:8080/api/v1/calculate' \\
 {
   "error": "Internal server error"
 }
+
+
+тесты для evaluator запускаются тоже через git bash(или можно через visual studio code):
+
+go test ./internal/evaluator
+
+при успешном прохождение теста должен вывестись ответ:
+
+ok  	calc_service/internal/evaluator	0.001s
+
+при ошибке в тестах будет указано где она совершена.
