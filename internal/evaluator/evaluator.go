@@ -14,7 +14,7 @@ func EvaluateExpression(expression string) (string, error) {
 		return "", errors.New("invalid expression")
 	}
 
-	result, err := eval(expression)
+	result, err := evalWithPrecedence(expression)
 	if err != nil {
 		return "", err
 	}
@@ -39,45 +39,89 @@ func isOperator(char rune) bool {
 	return char == '+' || char == '-' || char == '*' || char == '/'
 }
 
-func eval(expr string) (float64, error) {
-	tokens := strings.FieldsFunc(expr, func(r rune) bool {
-		return isOperator(r)
-	})
+func evalWithPrecedence(expr string) (float64, error) {
+	for {
+		index := strings.IndexAny(expr, "*/")
+		if index == -1 {
+			break
+		}
 
-	operators := strings.FieldsFunc(expr, func(r rune) bool {
-		return isDigit(r) || r == '.'
-	})
+		left := expr[:index]
+		right := expr[index+1:]
 
-	if len(tokens) == 0 || len(operators) == 0 || len(tokens) != len(operators)+1 {
-		return 0, errors.New("invalid expression")
-	}
+		leftTokens := strings.FieldsFunc(left, func(r rune) bool {
+			return isOperator(r)
+		})
 
-	result, err := strconv.ParseFloat(tokens[0], 64)
-	if err != nil {
-		return 0, err
-	}
-
-	for i, operator := range operators {
-		nextValue, err := strconv.ParseFloat(tokens[i+1], 64)
+		leftValue, err := strconv.ParseFloat(leftTokens[len(leftTokens)-1], 64)
 		if err != nil {
 			return 0, err
 		}
 
-		switch operator {
-		case "+":
-			result += nextValue
-		case "-":
-			result -= nextValue
-		case "*":
-			result *= nextValue
-		case "/":
-			if nextValue == 0 {
+		rightTokens := strings.FieldsFunc(right, func(r rune) bool {
+			return isOperator(r)
+		})
+
+		rightValue, err := strconv.ParseFloat(rightTokens[0], 64)
+		if err != nil {
+			return 0, err
+		}
+
+		var result float64
+		switch expr[index] {
+		case '*':
+			result = leftValue * rightValue
+		case '/':
+			if rightValue == 0 {
 				return 0, errors.New("division by zero")
 			}
-			result /= nextValue
-		default:
-			return 0, errors.New("unsupported operator")
+			result = leftValue / rightValue
 		}
+
+		expr = left[:len(left)-len(leftTokens[len(leftTokens)-1])] + fmt.Sprintf("%g", result) + right[len(rightTokens[0]):]
+	}
+
+	for {
+		index := strings.IndexAny(expr, "+-")
+		if index == -1 {
+			break
+		}
+
+		left := expr[:index]
+		right := expr[index+1:]
+
+		leftTokens := strings.FieldsFunc(left, func(r rune) bool {
+			return isOperator(r)
+		})
+
+		leftValue, err := strconv.ParseFloat(leftTokens[len(leftTokens)-1], 64)
+		if err != nil {
+			return 0, err
+		}
+
+		rightTokens := strings.FieldsFunc(right, func(r rune) bool {
+			return isOperator(r)
+		})
+
+		rightValue, err := strconv.ParseFloat(rightTokens[0], 64)
+		if err != nil {
+			return 0, err
+		}
+
+		var result float64
+		switch expr[index] {
+		case '+':
+			result = leftValue + rightValue
+		case '-':
+			result = leftValue - rightValue
+		}
+
+		expr = left[:len(left)-len(leftTokens[len(leftTokens)-1])] + fmt.Sprintf("%g", result) + right[len(rightTokens[0]):]
+	}
+
+	result, err := strconv.ParseFloat(expr, 64)
+	if err != nil {
+		return 0, err
 	}
 
 	return result, nil
