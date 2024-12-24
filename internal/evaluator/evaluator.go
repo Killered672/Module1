@@ -24,7 +24,7 @@ func EvaluateExpression(expression string) (string, error) {
 
 func isValidExpression(expr string) bool {
 	for _, char := range expr {
-		if !isDigit(char) && !isOperator(char) && char != '.' && char != '-' {
+		if !isDigit(char) && !isOperator(char) && char != '.' {
 			return false
 		}
 	}
@@ -41,7 +41,6 @@ func isOperator(char rune) bool {
 
 func evalWithPrecedence(expr string) (float64, error) {
 	for {
-
 		index := strings.IndexAny(expr, "*/")
 		if index == -1 {
 			break
@@ -83,14 +82,9 @@ func evalWithPrecedence(expr string) (float64, error) {
 	}
 
 	for {
-
 		index := strings.IndexAny(expr, "+-")
 		if index == -1 {
 			break
-		}
-
-		if index > 0 && expr[index-1] == '-' {
-			continue
 		}
 
 		left := expr[:index]
