@@ -25,13 +25,13 @@
 
 Успешный запрос:
 
-``curl --location 'http://localhost:8080/api/v1/calculate' \   ``    
-``--header 'Content-Type: application/json' \      ``   
-``--data '``
+curl --location 'http://localhost:8080/api/v1/calculate' \\      
+--header 'Content-Type: application/json' \\        
+--data '
 
-``{``
-  ``"expression": "2*2+2"``
-``}'``
+{
+  "expression": "2*2+2"
+}'
 
 Ответ:
 
@@ -43,9 +43,9 @@
 
 Ошибка 422 (невалидное выражение):
 
-``curl --location 'http://localhost:8080/api/v1/calculate' \       ``
-``--header 'Content-Type: application/json' \     ``  
-``--data '``
+curl --location 'http://localhost:8080/api/v1/calculate' \\     
+--header 'Content-Type: application/json' \\      
+--data '
 
 {
   "expression": "2+a"
@@ -60,9 +60,9 @@
 
 Ошибка 500 (внутренняя ошибка сервера):
 
-``curl --location 'http://localhost:8080/api/v1/calculate' \      ``
-``--header 'Content-Type: application/json' \       ``
-``--data '``
+curl --location 'http://localhost:8080/api/v1/calculate' \\
+--header 'Content-Type: application/json' \\
+--data '
 
 {
   "expression": "2/0"
@@ -80,6 +80,6 @@
 
 при успешном прохождение теста должен вывестись ответ:
 
-``ok  	calc_service/internal/evaluator	0.001s``
+ok  	calc_service/internal/evaluator	0.001s
 
 при ошибке в тестах будет указано где она совершена.
