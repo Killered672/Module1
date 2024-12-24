@@ -9,13 +9,13 @@
 
 Скопируйте репозиторий(через git bash):
 
-git clone https://github.com/Killered672/Module1
+``git clone https://github.com/Killered672/Module1``
 
-cd Module1
+``cd Module1``
 
 Запустите сервер:
 
-go run ./cmd/calc_service/main.go
+``go run ./cmd/calc_service/main.go``
 
 Сервер будет доступен по адресу http://localhost:8080.
 
@@ -25,61 +25,61 @@ go run ./cmd/calc_service/main.go
 
 Успешный запрос:
 
-curl --location 'http://localhost:8080/api/v1/calculate' \\         
+``curl --location 'http://localhost:8080/api/v1/calculate' \\         
 --header 'Content-Type: application/json' \\         
 --data '
 
 {
   "expression": "2*2+2"
-}'
+}'``
 
 Ответ:
 
-{
+``{
   "result": "6"
-}
+}``
 
 
 
 Ошибка 422 (невалидное выражение):
 
-curl --location 'http://localhost:8080/api/v1/calculate' \\       
+``curl --location 'http://localhost:8080/api/v1/calculate' \\       
 --header 'Content-Type: application/json' \\       
 --data '
 
 {
   "expression": "2+a"
-}'
+}'``
 
 Ответ:
-{
+``{
   "error": "Expression is not valid"
-}
+}``
 
 
 
 Ошибка 500 (внутренняя ошибка сервера):
 
-curl --location 'http://localhost:8080/api/v1/calculate' \\       
+``curl --location 'http://localhost:8080/api/v1/calculate' \\       
 --header 'Content-Type: application/json' \\       
 --data '
 
 {
   "expression": "2/0"
-}'
+}'``
 
 Ответ:
-{
+``{
   "error": "Internal server error"
-}
+}``
 
 
-тесты для evaluator запускаются тоже через git bash(или можно через visual studio code):
+Тесты для evaluator запускаются тоже через git bash(или можно через visual studio code):
 
-go test ./internal/evaluator
+``go test ./internal/evaluator``
 
 при успешном прохождение теста должен вывестись ответ:
 
-ok  	calc_service/internal/evaluator	0.001s
+``ok  	calc_service/internal/evaluator	0.001s``
 
 при ошибке в тестах будет указано где она совершена.
