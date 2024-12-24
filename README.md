@@ -25,53 +25,53 @@
 
 Успешный запрос:
 
-``curl --location 'http://localhost:8080/api/v1/calculate' \\         
---header 'Content-Type: application/json' \\         
---data '
+``curl --location 'http://localhost:8080/api/v1/calculate' \\     ``    
+``--header 'Content-Type: application/json' \\      ``   
+``--data '``
 
-{
-  "expression": "2*2+2"
-}'``
+``{``
+  ``"expression": "2*2+2"``
+``}'``
 
 Ответ:
 
-``{
+{
   "result": "6"
-}``
+}
 
 
 
 Ошибка 422 (невалидное выражение):
 
-``curl --location 'http://localhost:8080/api/v1/calculate' \\       
---header 'Content-Type: application/json' \\       
---data '
+``curl --location 'http://localhost:8080/api/v1/calculate' \\       ``
+``--header 'Content-Type: application/json' \\     ``  
+``--data '``
 
 {
   "expression": "2+a"
-}'``
+}'
 
 Ответ:
-``{
+{
   "error": "Expression is not valid"
-}``
+}
 
 
 
 Ошибка 500 (внутренняя ошибка сервера):
 
-``curl --location 'http://localhost:8080/api/v1/calculate' \\       
---header 'Content-Type: application/json' \\       
---data '
+``curl --location 'http://localhost:8080/api/v1/calculate' \\       ``
+``--header 'Content-Type: application/json' \\       ``
+``--data '``
 
 {
   "expression": "2/0"
-}'``
+}'
 
 Ответ:
-``{
+{
   "error": "Internal server error"
-}``
+}
 
 
 Тесты для evaluator запускаются тоже через git bash(или можно через visual studio code):
