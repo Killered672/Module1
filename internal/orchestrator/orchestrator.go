@@ -56,6 +56,18 @@ func (o *Orchestrator) GetExpression(id string) (*models.Expression, error) {
 	return expr, nil
 }
 
+func (o *Orchestrator) GetAllExpressions() []models.Expression {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
+	var expressions []models.Expression
+	for _, expr := range o.expressions {
+		expressions = append(expressions, *expr)
+	}
+
+	return expressions
+}
+
 func (o *Orchestrator) GetTask() (*models.Task, error) {
 	o.mu.Lock()
 	defer o.mu.Unlock()

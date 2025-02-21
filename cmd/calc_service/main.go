@@ -15,6 +15,8 @@ func main() {
 	agent.Start()
 
 	http.HandleFunc("/api/v1/calculate", handlers.CalculateHandler)
+	http.HandleFunc("/api/v1/expressions", handlers.ExpressionsHandler)
+	http.HandleFunc("/api/v1/expressions/", handlers.ExpressionByIDHandler)
 
 	log.Println("Starting calculator service on port 8080...")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
