@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"calc_service/internal/evaluator"
 	"calc_service/internal/models"
+	"calc_service/internal/orchestrator"
 )
+
+var orchestratorInstance = orchestrator.NewOrchestrator()
 
 func CalculateHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -20,19 +22,15 @@ func CalculateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := evaluator.EvaluateExpression(req.Expression)
+	id, err := orchestratorInstance.AddExpression(req.Expression)
 	if err != nil {
-		if err.Error() == "invalid expression" {
-			sendErrorResponse(w, http.StatusUnprocessableEntity, "Expression is not valid")
-		} else {
-			sendErrorResponse(w, http.StatusInternalServerError, "Internal server error")
-		}
+		sendErrorResponse(w, http.StatusUnprocessableEntity, "Invalid expression")
 		return
 	}
 
-	response := models.CalculateResponse{Result: result}
+	response := models.CalculateResponse{ID: id}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(response)
 }
 
