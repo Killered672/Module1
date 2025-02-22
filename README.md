@@ -44,7 +44,7 @@ curl --location 'http://localhost:8080/api/v1/calculate' \
 
 ```bash
 {
-  id: "..."
+  "id": "..."
 }
 ```
 После можно посмотреть этап выполнения данного запроса и его результат(если уже вычислилось):
@@ -52,7 +52,10 @@ curl --location 'http://localhost:8080/api/v1/calculate' \
 ```bash
 curl --location 'http://localhost:8080/api/v1/expressions'
 ```
-
+Вывод:
+```bash
+{"expressions":[{"id":"1740240110508066400","status":"pending"}]}
+```
 Или узнать точный результат нужного выражения по его точному id:
 
 ```bash
