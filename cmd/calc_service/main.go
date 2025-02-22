@@ -11,7 +11,7 @@ import (
 
 func main() {
 	orchestratorInstance := orchestrator.NewOrchestrator()
-	agent := agent.NewAgent(orchestratorInstance, 4)
+	agent := agent.NewAgent(orchestratorInstance, 1)
 	go agent.Start()
 
 	http.HandleFunc("/api/v1/calculate", handlers.CalculateHandler)

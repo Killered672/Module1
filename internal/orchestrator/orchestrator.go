@@ -20,8 +20,8 @@ type Orchestrator struct {
 
 func NewOrchestrator() *Orchestrator {
 	return &Orchestrator{
-		expressions: make(map[string]*models.Expression),
 		tasks:       make(map[string]*models.Task),
+		expressions: make(map[string]*models.Expression),
 	}
 }
 
@@ -42,8 +42,9 @@ func (o *Orchestrator) AddExpression(expr string) (string, error) {
 
 	log.Printf("Added expression %s with %d tasks", id, len(tasks))
 	for _, task := range tasks {
+		task.Status = "pending"
 		o.tasks[task.ID] = task
-		log.Printf("Added task %s for expression %s", task.ID, id)
+		log.Printf("Added task %s for expression %s (status: %s)", task.ID, id, task.Status)
 	}
 
 	return id, nil
@@ -54,6 +55,7 @@ func (o *Orchestrator) GetTask() (*models.Task, error) {
 	defer o.mu.Unlock()
 
 	for _, task := range o.tasks {
+		log.Printf("Checking task %s (status: %s)", task.ID, task.Status)
 		if task.Status == "pending" {
 			task.Status = "processing"
 			log.Printf("Assigned task %s to agent", task.ID)

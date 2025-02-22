@@ -23,6 +23,7 @@ func NewAgent(orchestrator *orchestrator.Orchestrator, power int) *Agent {
 func (a *Agent) Start() {
 	for i := 0; i < a.power; i++ {
 		go a.worker()
+		log.Printf("Started worker %d", i+1)
 	}
 	select {}
 }
