@@ -62,6 +62,13 @@ curl --location 'http://localhost:8080/api/v1/expressions'
 curl --location 'http://localhost:8080/api/v1/expressions/:id'
 ```
 
+Ошибки при запросах:
+
+Ошибка 404(отсутствие выражения):
+```bash
+{"error":"Expression not found"}
+```
+
 Ошибка 422 (невалидное выражение):
 
 ```bash
@@ -104,10 +111,12 @@ curl --location 'http://localhost:8080/api/v1/calculate' \
 go test ./internal/evaluator
 ```
 
-при успешном прохождение теста должен вывестись ответ:
+При успешном прохождение теста должен вывестись ответ:
 
 ```bash
 ok  	calc_service/internal/evaluator	0.001s
 ```
 
-при ошибке в тестах будет указано где она совершена.
+При ошибке в тестах будет указано где она совершена.
+
+Мой тг для связи: @Killered_656
