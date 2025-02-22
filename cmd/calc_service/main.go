@@ -12,7 +12,7 @@ import (
 func main() {
 	orchestratorInstance := orchestrator.NewOrchestrator()
 	agent := agent.NewAgent(orchestratorInstance, 4)
-	agent.Start()
+	go agent.Start()
 
 	http.HandleFunc("/api/v1/calculate", handlers.CalculateHandler)
 	http.HandleFunc("/api/v1/expressions", handlers.ExpressionsHandler)

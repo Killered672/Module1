@@ -24,6 +24,7 @@ func (a *Agent) Start() {
 	for i := 0; i < a.power; i++ {
 		go a.worker()
 	}
+	select {}
 }
 
 func (a *Agent) worker() {
