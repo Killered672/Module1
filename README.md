@@ -36,12 +36,27 @@ curl --location 'http://localhost:8080/api/v1/calculate' \
 ```
 
 Ответ:
+```
 
 {
-  "result": "6"
+  id: "..."
 }
 
+```
+После можно посмотреть этап выполнения данного запроса и его результат(если уже вычислилось):
 
+```
+
+curl --location 'http://localhost:8080/api/v1/expressions'
+
+```
+
+Или узнать точный результат нужного выражения по его точному id:
+
+```
+curl --location 'http://localhost:8080/api/v1/expressions/:id'
+
+```
 
 Ошибка 422 (невалидное выражение):
 
@@ -54,11 +69,14 @@ curl --location 'http://localhost:8080/api/v1/calculate' \
 }'
 ```
 Ответ:
+
+```
+
 {
   "error": "Expression is not valid"
 }
 
-
+```
 
 Ошибка 500 (внутренняя ошибка сервера):
 
@@ -71,10 +89,14 @@ curl --location 'http://localhost:8080/api/v1/calculate' \
 }'
 ```
 Ответ:
+
+```
+
 {
   "error": "Internal server error"
 }
 
+```
 
 Тесты для evaluator запускаются тоже через git bash(или можно через visual studio code):
 
@@ -82,6 +104,10 @@ curl --location 'http://localhost:8080/api/v1/calculate' \
 
 при успешном прохождение теста должен вывестись ответ:
 
+```
+
 ok  	calc_service/internal/evaluator	0.001s
+
+```
 
 при ошибке в тестах будет указано где она совершена.
