@@ -10,13 +10,19 @@
 
 Скопируйте репозиторий(через git bash):
 
-``git clone https://github.com/Killered672/Module1``
+```bash
+git clone https://github.com/Killered672/Module1
+```
 
-``cd Module1``
+```bash
+cd Module1
+```
 
 Запустите сервер:
 
-``go run ./cmd/calc_service/main.go``
+```bash
+go run ./cmd/calc_service/main.go
+```
 
 Сервер будет доступен по адресу http://localhost:8080.
 
@@ -36,26 +42,22 @@ curl --location 'http://localhost:8080/api/v1/calculate' \
 ```
 
 Ответ:
-```
 
+```bash
 {
   id: "..."
 }
-
 ```
 После можно посмотреть этап выполнения данного запроса и его результат(если уже вычислилось):
 
-```
-
+```bash
 curl --location 'http://localhost:8080/api/v1/expressions'
-
 ```
 
 Или узнать точный результат нужного выражения по его точному id:
 
-```
+```bash
 curl --location 'http://localhost:8080/api/v1/expressions/:id'
-
 ```
 
 Ошибка 422 (невалидное выражение):
@@ -70,12 +72,10 @@ curl --location 'http://localhost:8080/api/v1/calculate' \
 ```
 Ответ:
 
-```
-
+```bash
 {
   "error": "Expression is not valid"
 }
-
 ```
 
 Ошибка 500 (внутренняя ошибка сервера):
@@ -90,24 +90,22 @@ curl --location 'http://localhost:8080/api/v1/calculate' \
 ```
 Ответ:
 
-```
-
+```bash
 {
   "error": "Internal server error"
 }
-
 ```
 
 Тесты для evaluator запускаются тоже через git bash(или можно через visual studio code):
 
-``go test ./internal/evaluator``
+```bash
+go test ./internal/evaluator
+```
 
 при успешном прохождение теста должен вывестись ответ:
 
-```
-
+```bash
 ok  	calc_service/internal/evaluator	0.001s
-
 ```
 
 при ошибке в тестах будет указано где она совершена.
