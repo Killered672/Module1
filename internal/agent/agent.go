@@ -25,7 +25,6 @@ func (a *Agent) Start() {
 		go a.worker()
 		log.Printf("Started worker %d", i+1)
 	}
-	select {}
 }
 
 func (a *Agent) worker() {

@@ -65,7 +65,6 @@ func (o *Orchestrator) GetTask() (*models.Task, error) {
 		log.Printf("Assigned task %s to agent", task.ID)
 		return task, nil
 	default:
-		log.Println("No tasks available")
 		return nil, errors.New("no tasks available")
 	}
 }
