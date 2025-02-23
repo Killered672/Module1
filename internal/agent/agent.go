@@ -28,21 +28,15 @@ func (a *Agent) Start() {
 }
 
 func (a *Agent) worker() {
-	for {
-		task, err := a.orchestrator.GetTask()
-		if err != nil {
-			log.Println("No tasks available, waiting...")
-			time.Sleep(1 * time.Second)
-			continue
-		}
-
+	for task := range a.orchestrator.GetTask() {
 		log.Printf("Processing task %s: %f %s %f", task.ID, task.Arg1, task.Operation, task.Arg2)
 		result := a.executeTask(task)
 		log.Printf("Task %s result: %f", task.ID, result)
 
-		if err := a.orchestrator.SubmitTaskResult(task.ID, result); err != nil {
-			log.Printf("Failed to submit task result: %v", err)
-		}
+		a.orchestrator.SubmitTaskResult(&models.TaskResult{
+			ID:     task.ID,
+			Result: result,
+		})
 	}
 }
 

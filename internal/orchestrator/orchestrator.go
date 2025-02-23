@@ -13,20 +13,24 @@ import (
 )
 
 type Orchestrator struct {
-	expressions  map[string]*models.Expression
-	tasks        map[string]*models.Task
-	pendingTasks chan *models.Task
-	resultChan   chan *models.TaskResult
-	mu           sync.Mutex
+	expressions    map[string]*models.Expression
+	tasks          map[string]*models.Task
+	pendingTasks   chan *models.Task
+	completedTasks chan *models.TaskResult
+	mu             sync.Mutex
 }
 
 func NewOrchestrator() *Orchestrator {
 	return &Orchestrator{
-		tasks:        make(map[string]*models.Task),
-		expressions:  make(map[string]*models.Expression),
-		pendingTasks: make(chan *models.Task, 100),
-		mu:           sync.Mutex{},
+		tasks:          make(map[string]*models.Task),
+		expressions:    make(map[string]*models.Expression),
+		pendingTasks:   make(chan *models.Task, 100),
+		completedTasks: make(chan *models.TaskResult, 100),
 	}
+}
+
+func (o *Orchestrator) Start() {
+	go o.processCompletedTasks()
 }
 
 func (o *Orchestrator) AddExpression(expr string) (string, error) {
@@ -55,48 +59,44 @@ func (o *Orchestrator) AddExpression(expr string) (string, error) {
 	return id, nil
 }
 
-func (o *Orchestrator) GetTask() (*models.Task, error) {
-	select {
-	case task := <-o.pendingTasks:
-		o.mu.Lock()
-		defer o.mu.Unlock()
-
-		task.Status = "processing"
-		log.Printf("Assigned task %s to agent", task.ID)
-		return task, nil
-	default:
-		return nil, errors.New("no tasks available")
-	}
+func (o *Orchestrator) GetTask() <-chan *models.Task {
+	return o.pendingTasks
 }
 
-func (o *Orchestrator) SubmitTaskResult(taskID string, result float64) error {
-	o.mu.Lock()
-	defer o.mu.Unlock()
+func (o *Orchestrator) SubmitTaskResult(result *models.TaskResult) {
+	o.completedTasks <- result
+}
 
-	task, exists := o.tasks[taskID]
-	if !exists {
-		return errors.New("task not found")
-	}
+func (o *Orchestrator) processCompletedTasks() {
+	for result := range o.completedTasks {
+		o.mu.Lock()
 
-	task.Result = result
-	task.Status = "completed"
-
-	allTasksCompleted := true
-	for _, t := range o.tasks {
-		if t.ExpressionID == task.ExpressionID && t.Status != "completed" {
-			allTasksCompleted = false
-			break
+		task, exists := o.tasks[result.ID]
+		if !exists {
+			o.mu.Unlock()
+			continue
 		}
-	}
 
-	if allTasksCompleted {
-		expr := o.expressions[task.ExpressionID]
-		expr.Status = "completed"
-		expr.Result = fmt.Sprintf("%g", calculateExpressionResult(task.ExpressionID, o.tasks))
-		log.Printf("Expression %s completed with result %s", expr.ID, expr.Result)
-	}
+		task.Result = result.Result
+		task.Status = "completed"
 
-	return nil
+		allTasksCompleted := true
+		for _, t := range o.tasks {
+			if t.ExpressionID == task.ExpressionID && t.Status != "completed" {
+				allTasksCompleted = false
+				break
+			}
+		}
+
+		if allTasksCompleted {
+			expr := o.expressions[task.ExpressionID]
+			expr.Status = "completed"
+			expr.Result = fmt.Sprintf("%g", calculateExpressionResult(task.ExpressionID, o.tasks))
+			log.Printf("Expression %s completed with result %s", expr.ID, expr.Result)
+		}
+
+		o.mu.Unlock()
+	}
 }
 
 func (o *Orchestrator) GetAllExpressions() []*models.Expression {

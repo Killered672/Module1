@@ -11,6 +11,8 @@ import (
 
 func main() {
 	orchestratorInstance := orchestrator.NewOrchestrator()
+	orchestratorInstance.Start()
+
 	agent := agent.NewAgent(orchestratorInstance, 1)
 	go agent.Start()
 
