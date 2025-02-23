@@ -13,15 +13,19 @@ import (
 )
 
 type Orchestrator struct {
-	expressions map[string]*models.Expression
-	tasks       map[string]*models.Task
-	mu          sync.Mutex
+	expressions  map[string]*models.Expression
+	tasks        map[string]*models.Task
+	pendingTasks chan *models.Task
+	resultChan   chan *models.TaskResult
+	mu           sync.Mutex
 }
 
 func NewOrchestrator() *Orchestrator {
 	return &Orchestrator{
-		tasks:       make(map[string]*models.Task),
-		expressions: make(map[string]*models.Expression),
+		tasks:        make(map[string]*models.Task),
+		expressions:  make(map[string]*models.Expression),
+		pendingTasks: make(chan *models.Task, 100),
+		mu:           sync.Mutex{},
 	}
 }
 
@@ -44,6 +48,7 @@ func (o *Orchestrator) AddExpression(expr string) (string, error) {
 	for _, task := range tasks {
 		task.Status = "pending"
 		o.tasks[task.ID] = task
+		o.pendingTasks <- task
 		log.Printf("Added task %s for expression %s (status: %s)", task.ID, id, task.Status)
 	}
 
@@ -51,20 +56,18 @@ func (o *Orchestrator) AddExpression(expr string) (string, error) {
 }
 
 func (o *Orchestrator) GetTask() (*models.Task, error) {
-	o.mu.Lock()
-	defer o.mu.Unlock()
+	select {
+	case task := <-o.pendingTasks:
+		o.mu.Lock()
+		defer o.mu.Unlock()
 
-	for _, task := range o.tasks {
-		log.Printf("Checking task %s (status: %s)", task.ID, task.Status)
-		if task.Status == "pending" {
-			task.Status = "processing"
-			log.Printf("Assigned task %s to agent", task.ID)
-			return task, nil
-		}
+		task.Status = "processing"
+		log.Printf("Assigned task %s to agent", task.ID)
+		return task, nil
+	default:
+		log.Println("No tasks available")
+		return nil, errors.New("no tasks available")
 	}
-
-	log.Println("No tasks available")
-	return nil, errors.New("no tasks available")
 }
 
 func (o *Orchestrator) SubmitTaskResult(taskID string, result float64) error {
@@ -154,6 +157,31 @@ func parseExpressionToTasks(expressionID, expr string) ([]*models.Task, error) {
 		if isOperator(char) {
 			operations = append(operations, string(char))
 		}
+	}
+
+	if len(tokens) == 1 && len(operations) == 0 {
+		arg1, err := strconv.ParseFloat(tokens[0], 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid number: %s", tokens[0])
+		}
+
+		task := &models.Task{
+			ID:            generateID(),
+			ExpressionID:  expressionID,
+			Arg1:          arg1,
+			Arg2:          0,
+			Operation:     "+",
+			OperationTime: 0,
+			Status:        "completed",
+			Result:        arg1,
+		}
+
+		tasks = append(tasks, task)
+		return tasks, nil
+	}
+
+	if len(tokens) != len(operations)+1 {
+		return nil, fmt.Errorf("invalid expression: number of tokens and operations mismatch")
 	}
 
 	for i := 0; i < len(operations); i++ {
