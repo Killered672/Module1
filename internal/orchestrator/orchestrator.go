@@ -13,24 +13,19 @@ import (
 )
 
 type Orchestrator struct {
-	expressions    map[string]*models.Expression
-	tasks          map[string]*models.Task
-	pendingTasks   chan *models.Task
-	completedTasks chan *models.TaskResult
-	mu             sync.Mutex
+	expressions map[string]*models.Expression
+	tasks       map[string]*models.Task
+	mu          sync.Mutex
 }
 
 func NewOrchestrator() *Orchestrator {
 	return &Orchestrator{
-		tasks:          make(map[string]*models.Task),
-		expressions:    make(map[string]*models.Expression),
-		pendingTasks:   make(chan *models.Task, 100),
-		completedTasks: make(chan *models.TaskResult, 100),
+		tasks:       make(map[string]*models.Task),
+		expressions: make(map[string]*models.Expression),
 	}
 }
 
 func (o *Orchestrator) Start() {
-	go o.processCompletedTasks()
 }
 
 func (o *Orchestrator) AddExpression(expr string) (string, error) {
@@ -52,50 +47,53 @@ func (o *Orchestrator) AddExpression(expr string) (string, error) {
 	for _, task := range tasks {
 		task.Status = "pending"
 		o.tasks[task.ID] = task
-		o.pendingTasks <- task
 		log.Printf("Added task %s for expression %s (status: %s)", task.ID, id, task.Status)
 	}
 
 	return id, nil
 }
 
-func (o *Orchestrator) GetTask() <-chan *models.Task {
-	return o.pendingTasks
+func (o *Orchestrator) GetPendingTasks() []*models.Task {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
+	var pendingTasks []*models.Task
+	for _, task := range o.tasks {
+		if task.Status == "pending" {
+			pendingTasks = append(pendingTasks, task)
+		}
+	}
+
+	return pendingTasks
 }
 
-func (o *Orchestrator) SubmitTaskResult(result *models.TaskResult) {
-	o.completedTasks <- result
-}
+func (o *Orchestrator) UpdateTaskResult(taskID string, result float64) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
 
-func (o *Orchestrator) processCompletedTasks() {
-	for result := range o.completedTasks {
-		o.mu.Lock()
+	task, exists := o.tasks[taskID]
+	if !exists {
+		log.Printf("Task %s not found", taskID)
+		return
+	}
 
-		task, exists := o.tasks[result.ID]
-		if !exists {
-			o.mu.Unlock()
-			continue
+	task.Result = result
+	task.Status = "completed"
+	log.Printf("Task %s completed with result %f", taskID, result)
+
+	allTasksCompleted := true
+	for _, t := range o.tasks {
+		if t.ExpressionID == task.ExpressionID && t.Status != "completed" {
+			allTasksCompleted = false
+			break
 		}
+	}
 
-		task.Result = result.Result
-		task.Status = "completed"
-
-		allTasksCompleted := true
-		for _, t := range o.tasks {
-			if t.ExpressionID == task.ExpressionID && t.Status != "completed" {
-				allTasksCompleted = false
-				break
-			}
-		}
-
-		if allTasksCompleted {
-			expr := o.expressions[task.ExpressionID]
-			expr.Status = "completed"
-			expr.Result = fmt.Sprintf("%g", calculateExpressionResult(task.ExpressionID, o.tasks))
-			log.Printf("Expression %s completed with result %s", expr.ID, expr.Result)
-		}
-
-		o.mu.Unlock()
+	if allTasksCompleted {
+		expr := o.expressions[task.ExpressionID]
+		expr.Status = "completed"
+		expr.Result = fmt.Sprintf("%g", calculateExpressionResult(task.ExpressionID, o.tasks))
+		log.Printf("Expression %s completed with result %s", expr.ID, expr.Result)
 	}
 }
 
