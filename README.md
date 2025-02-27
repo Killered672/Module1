@@ -1,7 +1,7 @@
 # Module-1,2
 Итоговая задача модуля 1+2 Яндекс лицея
 
-Этот проект реализует веб-сервис, принимающий выражение через Http запрос и возвращающий результат вычислений
+Этот проект реализует веб-сервис, принимающий выражение через Http запрос и возвращабщий результат вычислений
 
 Инструкция по запуску:
 
@@ -10,17 +10,22 @@
 Скопируйте репозиторий(через git bash):
 
 ```bash
-git clone https://github.com/Killered672/Module1
+git clone https://github.com/Killered672/Module2calc
 ```
 
 ```bash
-cd Module1
+cd Module2calc
 ```
 
 Запустите сервер:
 
 ```bash
-go run ./cmd/calc_service/main.go
+go run ./cmd/orchestrator.start/main.go
+```
+В новом bash(у меня так,может у вас будет дотупно и в одном и том же):
+
+```bash
+
 ```
 
 Сервер будет доступен по адресу http://localhost:8080.

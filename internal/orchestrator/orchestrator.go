@@ -1,221 +1,292 @@
 package orchestrator
 
 import (
-	"errors"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
+	"os"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
-
-	"calc_service/internal/models"
 )
 
+type Config struct {
+	Addr                string
+	TimeAddition        int
+	TimeSubtraction     int
+	TimeMultiplications int
+	TimeDivisions       int
+}
+
+func ConfigFromEnv() *Config {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	ta, _ := strconv.Atoi(os.Getenv("TIME_ADDITION_MS"))
+	if ta == 0 {
+		ta = 100
+	}
+	ts, _ := strconv.Atoi(os.Getenv("TIME_SUBTRACTION_MS"))
+	if ts == 0 {
+		ts = 100
+	}
+	tm, _ := strconv.Atoi(os.Getenv("TIME_MULTIPLICATIONS_MS"))
+	if tm == 0 {
+		tm = 100
+	}
+	td, _ := strconv.Atoi(os.Getenv("TIME_DIVISIONS_MS"))
+	if td == 0 {
+		td = 100
+	}
+	return &Config{
+		Addr:                port,
+		TimeAddition:        ta,
+		TimeSubtraction:     ts,
+		TimeMultiplications: tm,
+		TimeDivisions:       td,
+	}
+}
+
 type Orchestrator struct {
-	expressions map[string]*models.Expression
-	tasks       map[string]*models.Task
+	Config      *Config
+	exprStore   map[string]*Expression
+	taskStore   map[string]*Task
+	taskQueue   []*Task
 	mu          sync.Mutex
+	exprCounter int64
+	taskCounter int64
 }
 
 func NewOrchestrator() *Orchestrator {
 	return &Orchestrator{
-		tasks:       make(map[string]*models.Task),
-		expressions: make(map[string]*models.Expression),
+		Config:    ConfigFromEnv(),
+		exprStore: make(map[string]*Expression),
+		taskStore: make(map[string]*Task),
+		taskQueue: make([]*Task, 0),
 	}
 }
 
-func (o *Orchestrator) Start() {
+type Expression struct {
+	ID     string   `json:"id"`
+	Expr   string   `json:"expression"`
+	Status string   `json:"status"`
+	Result *float64 `json:"result,omitempty"`
+	AST    *ASTNode `json:"-"`
 }
 
-func (o *Orchestrator) AddExpression(expr string) (string, error) {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-
-	id := generateID()
-	o.expressions[id] = &models.Expression{
-		ID:     id,
-		Status: "pending",
-	}
-
-	tasks, err := parseExpressionToTasks(id, expr)
-	if err != nil {
-		return "", err
-	}
-
-	log.Printf("Added expression %s with %d tasks", id, len(tasks))
-	for _, task := range tasks {
-		task.Status = "pending"
-		o.tasks[task.ID] = task
-		log.Printf("Added task %s for expression %s (status: %s)", task.ID, id, task.Status)
-	}
-
-	return id, nil
+type Task struct {
+	ID            string   `json:"id"`
+	ExprID        string   `json:"-"`
+	Arg1          float64  `json:"arg1"`
+	Arg2          float64  `json:"arg2"`
+	Operation     string   `json:"operation"`
+	OperationTime int      `json:"operation_time"`
+	Node          *ASTNode `json:"-"`
 }
 
-func (o *Orchestrator) GetPendingTasks() []*models.Task {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-
-	var pendingTasks []*models.Task
-	for _, task := range o.tasks {
-		if task.Status == "pending" {
-			pendingTasks = append(pendingTasks, task)
-		}
-	}
-
-	return pendingTasks
-}
-
-func (o *Orchestrator) UpdateTaskResult(taskID string, result float64) {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-
-	task, exists := o.tasks[taskID]
-	if !exists {
-		log.Printf("Task %s not found", taskID)
+func (o *Orchestrator) calculateHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error":"Wrong Method"}`, http.StatusMethodNotAllowed)
 		return
 	}
+	var req struct {
+		Expression string `json:"expression"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil || req.Expression == "" {
+		http.Error(w, `{"error":"Invalid Body"}`, http.StatusUnprocessableEntity)
+		return
+	}
+	ast, err := ParseAST(req.Expression)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusUnprocessableEntity)
+		return
+	}
+	o.mu.Lock()
+	o.exprCounter++
+	exprID := fmt.Sprintf("%d", o.exprCounter)
+	expr := &Expression{
+		ID:     exprID,
+		Expr:   req.Expression,
+		Status: "pending",
+		AST:    ast,
+	}
+	o.exprStore[exprID] = expr
+	o.scheduleTasks(expr)
+	o.mu.Unlock()
 
-	task.Result = result
-	task.Status = "completed"
-	log.Printf("Task %s completed with result %f", taskID, result)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{"id": exprID})
+}
 
-	allTasksCompleted := true
-	for _, t := range o.tasks {
-		if t.ExpressionID == task.ExpressionID && t.Status != "completed" {
-			allTasksCompleted = false
-			break
+func (o *Orchestrator) expressionsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, `{"error":"Wrong Method"}`, http.StatusMethodNotAllowed)
+		return
+	}
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	exprs := make([]*Expression, 0, len(o.exprStore))
+	for _, expr := range o.exprStore {
+		if expr.AST != nil && expr.AST.IsLeaf {
+			expr.Status = "completed"
+			expr.Result = &expr.AST.Value
+		}
+		exprs = append(exprs, expr)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"expressions": exprs})
+}
+
+func (o *Orchestrator) expressionByIDHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, `{"error":"Wrong Method"}`, http.StatusMethodNotAllowed)
+		return
+	}
+	id := r.URL.Path[len("/api/v1/expressions/"):]
+	o.mu.Lock()
+	expr, ok := o.exprStore[id]
+	o.mu.Unlock()
+	if !ok {
+		http.Error(w, `{"error":"Expression not found"}`, http.StatusNotFound)
+		return
+	}
+	if expr.AST != nil && expr.AST.IsLeaf {
+		expr.Status = "completed"
+		expr.Result = &expr.AST.Value
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"expression": expr})
+}
+
+func (o *Orchestrator) getTaskHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, `{"error":"Wrong Method"}`, http.StatusMethodNotAllowed)
+		return
+	}
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if len(o.taskQueue) == 0 {
+		http.Error(w, `{"error":"No task available"}`, http.StatusNotFound)
+		return
+	}
+	task := o.taskQueue[0]
+	o.taskQueue = o.taskQueue[1:]
+	if expr, exists := o.exprStore[task.ExprID]; exists {
+		expr.Status = "in_progress"
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"task": task})
+}
+
+func (o *Orchestrator) postTaskHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error":"Wrong Method"}`, http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		ID     string  `json:"id"`
+		Result float64 `json:"result"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil || req.ID == "" {
+		http.Error(w, `{"error":"Invalid Body"}`, http.StatusUnprocessableEntity)
+		return
+	}
+	o.mu.Lock()
+	task, ok := o.taskStore[req.ID]
+	if !ok {
+		o.mu.Unlock()
+		http.Error(w, `{"error":"Task not found"}`, http.StatusNotFound)
+		return
+	}
+	task.Node.IsLeaf = true
+	task.Node.Value = req.Result
+	delete(o.taskStore, req.ID)
+	if expr, exists := o.exprStore[task.ExprID]; exists {
+		o.scheduleTasks(expr)
+		if expr.AST.IsLeaf {
+			expr.Status = "completed"
+			expr.Result = &expr.AST.Value
 		}
 	}
-
-	if allTasksCompleted {
-		expr := o.expressions[task.ExpressionID]
-		expr.Status = "completed"
-		expr.Result = fmt.Sprintf("%g", calculateExpressionResult(task.ExpressionID, o.tasks))
-		log.Printf("Expression %s completed with result %s", expr.ID, expr.Result)
-	}
+	o.mu.Unlock()
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"result accepted"}`))
 }
 
-func (o *Orchestrator) GetAllExpressions() []*models.Expression {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-
-	expressions := make([]*models.Expression, 0, len(o.expressions))
-	for _, expr := range o.expressions {
-		expressions = append(expressions, expr)
-	}
-
-	return expressions
-}
-
-func (o *Orchestrator) GetExpression(id string) (*models.Expression, error) {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-
-	expr, exists := o.expressions[id]
-	if !exists {
-		return nil, errors.New("expression not found")
-	}
-
-	return expr, nil
-}
-
-func calculateExpressionResult(expressionID string, tasks map[string]*models.Task) float64 {
-	var result float64
-	for _, task := range tasks {
-		if task.ExpressionID == expressionID {
-			switch task.Operation {
-			case "+":
-				result += task.Result
-			case "-":
-				result -= task.Result
-			case "*":
-				result *= task.Result
-			case "/":
-				result /= task.Result
+func (o *Orchestrator) scheduleTasks(expr *Expression) {
+	var traverse func(node *ASTNode)
+	traverse = func(node *ASTNode) {
+		if node == nil || node.IsLeaf {
+			return
+		}
+		traverse(node.Left)
+		traverse(node.Right)
+		if node.Left != nil && node.Right != nil && node.Left.IsLeaf && node.Right.IsLeaf {
+			if !node.TaskScheduled {
+				o.taskCounter++
+				taskID := fmt.Sprintf("%d", o.taskCounter)
+				var opTime int
+				switch node.Operator {
+				case "+":
+					opTime = o.Config.TimeAddition
+				case "-":
+					opTime = o.Config.TimeSubtraction
+				case "*":
+					opTime = o.Config.TimeMultiplications
+				case "/":
+					opTime = o.Config.TimeDivisions
+				default:
+					opTime = 100
+				}
+				task := &Task{
+					ID:            taskID,
+					ExprID:        expr.ID,
+					Arg1:          node.Left.Value,
+					Arg2:          node.Right.Value,
+					Operation:     node.Operator,
+					OperationTime: opTime,
+					Node:          node,
+				}
+				node.TaskScheduled = true
+				o.taskStore[taskID] = task
+				o.taskQueue = append(o.taskQueue, task)
 			}
 		}
 	}
-	return result
+	traverse(expr.AST)
 }
 
-func parseExpressionToTasks(expressionID, expr string) ([]*models.Task, error) {
-	var tasks []*models.Task
-
-	expr = strings.ReplaceAll(expr, " ", "")
-
-	tokens := strings.FieldsFunc(expr, func(r rune) bool {
-		return !isDigit(r) && r != '.'
+func (o *Orchestrator) RunServer() error {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/calculate", o.calculateHandler)
+	mux.HandleFunc("/api/v1/expressions", o.expressionsHandler)
+	mux.HandleFunc("/api/v1/expressions/", o.expressionByIDHandler)
+	mux.HandleFunc("/internal/task", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			o.getTaskHandler(w, r)
+		} else if r.Method == http.MethodPost {
+			o.postTaskHandler(w, r)
+		} else {
+			http.Error(w, `{"error":"Wrong Method"}`, http.StatusMethodNotAllowed)
+		}
 	})
-
-	operations := make([]string, 0)
-	for _, char := range expr {
-		if isOperator(char) {
-			operations = append(operations, string(char))
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, `{"error":"Not Found"}`, http.StatusNotFound)
+	})
+	go func() {
+		for {
+			time.Sleep(2 * time.Second)
+			o.mu.Lock()
+			if len(o.taskQueue) > 0 {
+				log.Printf("Pending tasks in queue: %d", len(o.taskQueue))
+			}
+			o.mu.Unlock()
 		}
-	}
-
-	if len(tokens) == 1 && len(operations) == 0 {
-		arg1, err := strconv.ParseFloat(tokens[0], 64)
-		if err != nil {
-			return nil, fmt.Errorf("invalid number: %s", tokens[0])
-		}
-
-		task := &models.Task{
-			ID:            generateID(),
-			ExpressionID:  expressionID,
-			Arg1:          arg1,
-			Arg2:          0,
-			Operation:     "+",
-			OperationTime: 0,
-			Status:        "completed",
-			Result:        arg1,
-		}
-
-		tasks = append(tasks, task)
-		return tasks, nil
-	}
-
-	if len(tokens) != len(operations)+1 {
-		return nil, fmt.Errorf("invalid expression: number of tokens and operations mismatch")
-	}
-
-	for i := 0; i < len(operations); i++ {
-		arg1, err := strconv.ParseFloat(tokens[i], 64)
-		if err != nil {
-			return nil, fmt.Errorf("invalid number: %s", tokens[i])
-		}
-
-		arg2, err := strconv.ParseFloat(tokens[i+1], 64)
-		if err != nil {
-			return nil, fmt.Errorf("invalid number: %s", tokens[i+1])
-		}
-
-		task := &models.Task{
-			ID:            generateID(),
-			ExpressionID:  expressionID,
-			Arg1:          arg1,
-			Arg2:          arg2,
-			Operation:     operations[i],
-			OperationTime: 1000,
-			Status:        "pending",
-		}
-
-		tasks = append(tasks, task)
-	}
-
-	return tasks, nil
-}
-
-func generateID() string {
-	return fmt.Sprintf("%d", time.Now().UnixNano())
-}
-
-func isDigit(char rune) bool {
-	return char >= '0' && char <= '9'
-}
-
-func isOperator(char rune) bool {
-	return char == '+' || char == '-' || char == '*' || char == '/'
+	}()
+	return http.ListenAndServe(":"+o.Config.Addr, mux)
 }
