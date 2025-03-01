@@ -9,5 +9,5 @@ import (
 func main() {
 	agent := agent.NewAgent()
 	log.Println("Starting Agent...")
-	agent.Run()
+	agent.Start()
 }

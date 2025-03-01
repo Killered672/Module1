@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func Compute(operation string, a, b float64) (float64, error) {
+func CalculationsForTesting(operation string, a, b float64) (float64, error) {
 	switch operation {
 	case "+":
 		return a + b, nil
@@ -23,7 +23,7 @@ func Compute(operation string, a, b float64) (float64, error) {
 	}
 }
 
-func TestCompute(t *testing.T) {
+func TestCalculations(t *testing.T) {
 	tests := []struct {
 		name      string
 		operation string
@@ -114,7 +114,7 @@ func TestCompute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := Compute(tt.operation, tt.a, tt.b)
+			result, err := Calculations(tt.operation, tt.a, tt.b)
 
 			if tt.expectErr {
 				if err == nil {

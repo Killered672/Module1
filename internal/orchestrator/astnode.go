@@ -20,11 +20,14 @@ func ParseAST(expression string) (*ASTNode, error) {
 	if expr == "" {
 		return nil, fmt.Errorf("empty expression")
 	}
+
 	p := &parser{input: expr, pos: 0}
 	node, err := p.parseExpression()
+
 	if err != nil {
 		return nil, err
 	}
+
 	if p.pos < len(p.input) {
 		return nil, fmt.Errorf("unexpected token at position %d", p.pos)
 	}
@@ -59,9 +62,11 @@ func (p *parser) parseExpression() (*ASTNode, error) {
 		if ch == '+' || ch == '-' {
 			op := string(p.get())
 			right, err := p.parseTerm()
+
 			if err != nil {
 				return nil, err
 			}
+
 			node = &ASTNode{
 				IsLeaf:   false,
 				Operator: op,
@@ -80,14 +85,17 @@ func (p *parser) parseTerm() (*ASTNode, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	for {
 		ch := p.peek()
 		if ch == '*' || ch == '/' {
 			op := string(p.get())
 			right, err := p.parseFactor()
+
 			if err != nil {
 				return nil, err
 			}
+
 			node = &ASTNode{
 				IsLeaf:   false,
 				Operator: op,
@@ -115,10 +123,12 @@ func (p *parser) parseFactor() (*ASTNode, error) {
 		p.get()
 		return node, nil
 	}
+
 	start := p.pos
 	if ch == '+' || ch == '-' {
 		p.get()
 	}
+
 	for {
 		ch = p.peek()
 		if unicode.IsDigit(ch) || ch == '.' {
@@ -127,10 +137,12 @@ func (p *parser) parseFactor() (*ASTNode, error) {
 			break
 		}
 	}
+
 	token := p.input[start:p.pos]
 	if token == "" {
 		return nil, fmt.Errorf("expected number at position %d", start)
 	}
+
 	value, err := strconv.ParseFloat(token, 64)
 	if err != nil {
 		return nil, fmt.Errorf("invalid number %s", token)

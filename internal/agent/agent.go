@@ -28,7 +28,9 @@ func NewAgent() *Agent {
 	if err != nil || cp < 1 {
 		cp = 1
 	}
+
 	orchestratorURL := os.Getenv("ORCHESTRATOR_URL")
+
 	if orchestratorURL == "" {
 		orchestratorURL = "http://localhost:8080"
 	}
@@ -38,15 +40,15 @@ func NewAgent() *Agent {
 	}
 }
 
-func (a *Agent) Run() {
+func (a *Agent) Start() {
 	for i := 0; i < a.ComputingPower; i++ {
 		log.Printf("Starting worker %d", i)
-		go a.worker(i)
+		go a.Worker(i)
 	}
 	select {}
 }
 
-func (a *Agent) worker(id int) {
+func (a *Agent) Worker(id int) {
 	for {
 		resp, err := http.Get(a.OrchestratorURL + "/internal/task")
 		if err != nil {
@@ -54,11 +56,13 @@ func (a *Agent) worker(id int) {
 			time.Sleep(2 * time.Second)
 			continue
 		}
+
 		if resp.StatusCode == http.StatusNotFound {
 			resp.Body.Close()
 			time.Sleep(1 * time.Second)
 			continue
 		}
+
 		var taskResp struct {
 			Task struct {
 				ID            string  `json:"id"`
@@ -68,6 +72,7 @@ func (a *Agent) worker(id int) {
 				OperationTime int     `json:"operation_time"`
 			} `json:"task"`
 		}
+
 		err = json.NewDecoder(resp.Body).Decode(&taskResp)
 		resp.Body.Close()
 		if err != nil {
@@ -75,24 +80,29 @@ func (a *Agent) worker(id int) {
 			time.Sleep(1 * time.Second)
 			continue
 		}
+
 		task := taskResp.Task
 		log.Printf("Worker %d: received task %s: %f %s %f, simulating %d ms", id, task.ID, task.Arg1, task.Operation, task.Arg2, task.OperationTime)
 		time.Sleep(time.Duration(task.OperationTime) * time.Millisecond)
-		result, err := Calculate(task.Operation, task.Arg1, task.Arg2)
+		result, err := Calculations(task.Operation, task.Arg1, task.Arg2)
 		if err != nil {
 			log.Printf("Worker %d: error computing task %s: %v", id, task.ID, err)
 			continue
 		}
+
 		resultPayload := map[string]interface{}{
 			"id":     task.ID,
 			"result": result,
 		}
+
 		payloadBytes, _ := json.Marshal(resultPayload)
 		respPost, err := http.Post(a.OrchestratorURL+"/internal/task", "application/json", bytes.NewReader(payloadBytes))
+
 		if err != nil {
 			log.Printf("Worker %d: error posting result for task %s: %v", id, task.ID, err)
 			continue
 		}
+
 		if respPost.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(respPost.Body)
 			log.Printf("Worker %d: error response posting result for task %s: %s", id, task.ID, string(body))
@@ -103,11 +113,11 @@ func (a *Agent) worker(id int) {
 	}
 }
 
-func Calc(expression string) (float64, error) {
+func CalculateExpression(expression string) (float64, error) {
 	return 0, fmt.Errorf("not implemented")
 }
 
-func Calculate(operation string, a, b float64) (float64, error) {
+func Calculations(operation string, a, b float64) (float64, error) {
 	switch operation {
 	case "+":
 		return a + b, nil

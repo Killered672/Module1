@@ -19,27 +19,33 @@ type Config struct {
 	TimeDivisions       int
 }
 
-func ConfigFromEnv() *Config {
+func Configuration() *Config {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
+
 	ta, _ := strconv.Atoi(os.Getenv("TIME_ADDITION_MS"))
+
 	if ta == 0 {
 		ta = 100
 	}
+
 	ts, _ := strconv.Atoi(os.Getenv("TIME_SUBTRACTION_MS"))
 	if ts == 0 {
 		ts = 100
 	}
+
 	tm, _ := strconv.Atoi(os.Getenv("TIME_MULTIPLICATIONS_MS"))
 	if tm == 0 {
 		tm = 100
 	}
+
 	td, _ := strconv.Atoi(os.Getenv("TIME_DIVISIONS_MS"))
 	if td == 0 {
 		td = 100
 	}
+
 	return &Config{
 		Addr:                port,
 		TimeAddition:        ta,
@@ -61,7 +67,7 @@ type Orchestrator struct {
 
 func NewOrchestrator() *Orchestrator {
 	return &Orchestrator{
-		Config:    ConfigFromEnv(),
+		Config:    Configuration(),
 		exprStore: make(map[string]*Expression),
 		taskStore: make(map[string]*Task),
 		taskQueue: make([]*Task, 0),
@@ -104,17 +110,20 @@ func (o *Orchestrator) calculateHandler(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusUnprocessableEntity)
 		return
 	}
+
 	o.mu.Lock()
 	o.exprCounter++
 	exprID := fmt.Sprintf("%d", o.exprCounter)
+
 	expr := &Expression{
 		ID:     exprID,
 		Expr:   req.Expression,
 		Status: "pending",
 		AST:    ast,
 	}
+
 	o.exprStore[exprID] = expr
-	o.scheduleTasks(expr)
+	o.Tasks(expr)
 	o.mu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -127,9 +136,11 @@ func (o *Orchestrator) expressionsHandler(w http.ResponseWriter, r *http.Request
 		http.Error(w, `{"error":"Wrong Method"}`, http.StatusMethodNotAllowed)
 		return
 	}
+
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	exprs := make([]*Expression, 0, len(o.exprStore))
+
 	for _, expr := range o.exprStore {
 		if expr.AST != nil && expr.AST.IsLeaf {
 			expr.Status = "completed"
@@ -137,27 +148,32 @@ func (o *Orchestrator) expressionsHandler(w http.ResponseWriter, r *http.Request
 		}
 		exprs = append(exprs, expr)
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"expressions": exprs})
 }
 
-func (o *Orchestrator) expressionByIDHandler(w http.ResponseWriter, r *http.Request) {
+func (o *Orchestrator) expressionIDHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, `{"error":"Wrong Method"}`, http.StatusMethodNotAllowed)
 		return
 	}
+
 	id := r.URL.Path[len("/api/v1/expressions/"):]
 	o.mu.Lock()
 	expr, ok := o.exprStore[id]
 	o.mu.Unlock()
+
 	if !ok {
 		http.Error(w, `{"error":"Expression not found"}`, http.StatusNotFound)
 		return
 	}
+
 	if expr.AST != nil && expr.AST.IsLeaf {
 		expr.Status = "completed"
 		expr.Result = &expr.AST.Value
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"expression": expr})
 }
@@ -167,17 +183,22 @@ func (o *Orchestrator) getTaskHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"Wrong Method"}`, http.StatusMethodNotAllowed)
 		return
 	}
+
 	o.mu.Lock()
 	defer o.mu.Unlock()
+
 	if len(o.taskQueue) == 0 {
 		http.Error(w, `{"error":"No task available"}`, http.StatusNotFound)
 		return
 	}
+
 	task := o.taskQueue[0]
 	o.taskQueue = o.taskQueue[1:]
+
 	if expr, exists := o.exprStore[task.ExprID]; exists {
 		expr.Status = "in_progress"
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"task": task})
 }
@@ -187,43 +208,52 @@ func (o *Orchestrator) postTaskHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"Wrong Method"}`, http.StatusMethodNotAllowed)
 		return
 	}
+
 	var req struct {
 		ID     string  `json:"id"`
 		Result float64 `json:"result"`
 	}
+
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil || req.ID == "" {
 		http.Error(w, `{"error":"Invalid Body"}`, http.StatusUnprocessableEntity)
 		return
 	}
+
 	o.mu.Lock()
 	task, ok := o.taskStore[req.ID]
+
 	if !ok {
 		o.mu.Unlock()
 		http.Error(w, `{"error":"Task not found"}`, http.StatusNotFound)
 		return
 	}
+
 	task.Node.IsLeaf = true
 	task.Node.Value = req.Result
 	delete(o.taskStore, req.ID)
+
 	if expr, exists := o.exprStore[task.ExprID]; exists {
-		o.scheduleTasks(expr)
+		o.Tasks(expr)
 		if expr.AST.IsLeaf {
 			expr.Status = "completed"
 			expr.Result = &expr.AST.Value
 		}
 	}
+
 	o.mu.Unlock()
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"status":"result accepted"}`))
 }
 
-func (o *Orchestrator) scheduleTasks(expr *Expression) {
+func (o *Orchestrator) Tasks(expr *Expression) {
 	var traverse func(node *ASTNode)
 	traverse = func(node *ASTNode) {
+
 		if node == nil || node.IsLeaf {
 			return
 		}
+
 		traverse(node.Left)
 		traverse(node.Right)
 		if node.Left != nil && node.Right != nil && node.Left.IsLeaf && node.Right.IsLeaf {
@@ -243,6 +273,7 @@ func (o *Orchestrator) scheduleTasks(expr *Expression) {
 				default:
 					opTime = 100
 				}
+
 				task := &Task{
 					ID:            taskID,
 					ExprID:        expr.ID,
@@ -265,7 +296,8 @@ func (o *Orchestrator) RunServer() error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v1/calculate", o.calculateHandler)
 	mux.HandleFunc("/api/v1/expressions", o.expressionsHandler)
-	mux.HandleFunc("/api/v1/expressions/", o.expressionByIDHandler)
+	mux.HandleFunc("/api/v1/expressions/", o.expressionIDHandler)
+
 	mux.HandleFunc("/internal/task", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			o.getTaskHandler(w, r)
@@ -275,9 +307,11 @@ func (o *Orchestrator) RunServer() error {
 			http.Error(w, `{"error":"Wrong Method"}`, http.StatusMethodNotAllowed)
 		}
 	})
+
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"Not Found"}`, http.StatusNotFound)
 	})
+
 	go func() {
 		for {
 			time.Sleep(2 * time.Second)
